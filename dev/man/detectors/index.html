@@ -4,8 +4,9 @@
     &quot;class&quot;:&quot;InvertedCoax&quot;,  // either &quot;Coax&quot;, &quot;BEGe&quot;, &quot;InvertedCoax&quot;
     &quot;type&quot;:&quot;p&quot;, // either &quot;p&quot;, &quot;ptype&quot;, &quot;p-type&quot;, &quot;n&quot;, &quot;ntype&quot; or &quot;n-type&quot;
     &quot;cyclic&quot;:0, // The periodicity of the detector in degree. 
-                // `0` means complete symmetric in ϕ -&gt; 2D simulation. 
+                // `0` means complete symmetric in θ -&gt; 2D simulation. 
                 // The condition &quot;360 / `cyclic` = n; n = 1, 2, 3, ...&quot; must be fulfilled.
+    &quot;mirror_symmetry_θ&quot;: &quot;true&quot;, // set to true, if a mirror symmetry exists within the periodicity specified via `cyclic`
     &quot;materials&quot;:{
         &quot;detector&quot;:&quot;HPGe&quot;,  // Material of the detector 
         &quot;environment&quot;:&quot;Vacuum&quot; // Material of the environment
