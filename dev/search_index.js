@@ -101,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Electric Potentials",
     "title": "Example",
     "category": "section",
-    "text": "To simulate a detector the detector must first be defined (Detectors). using Plots; pyplot()\nusing SolidStateDetectors\n\ndetector = SolidStateDetector(SSD_examples[:InvertedCoax]);Then, the electric potential can be calculated through the function calculate_electric_potential. It returns a collection struct SolidStateDetectors.PotentialSimulationSetup in which the electric potential is stored. Also it stores the grid, the charge density, the dielectric distribution and the point types SolidStateDetectors.PointTypes. The electric potential can be extracted via the function SolidStateDetectors.ElectricPotential(). The struct ElectricPotential also holds the corresponding grid SolidStateDetectors.Grid. E_pot_setup = calculate_electric_potential(detector);\nE_pot = ElectricPotential(E_pot_setup);A plot recipe for the struct SolidStateDetectors.ElectricPotential exists so the result can be visualized throughplot(E_pot, θ=0)Since this is a fully θ-symmetric detector, the 3-dimensional grid has only 1 tick in the polar coordinate θ. But due to effects of the crystal axes the grid has to be extended in θ in order to deterime the electric and drift fields. This can be done through SolidStateDetectors.extent_2D_grid_to_3D!:E_pot = SolidStateDetectors.get_2π_potential(E_pot, n_points_in_θ = 36);Now it can also be plotted in the r-θ plane: plot(E_pot, z=0.04)"
+    "text": "To simulate a detector the detector must first be defined (SolidStateDetector).using Plots; pyplot()\nusing SolidStateDetectors\n\ndetector = SolidStateDetector(SSD_examples[:InvertedCoax]);Then, the electric potential can be calculated through the function calculate_electric_potential. It returns a collection struct SolidStateDetectors.PotentialSimulationSetup in which the electric potential is stored. Also it stores the grid, the charge density, the dielectric distribution and the point types PointTypes. The electric potential can be extracted via the function ElectricPotential(::SolidStateDetectors.PotentialSimulationSetup). The struct ElectricPotential also holds the corresponding grid Grid. E_pot_setup = calculate_electric_potential(detector);\nE_pot = ElectricPotential(E_pot_setup, n_points_in_θ = 36);A plot recipe for the struct ElectricPotential exists so the result can be visualized throughplot(E_pot, θ=0)It can also be plotted in the r-θ plane:plot(E_pot, z=0.04)"
 },
 
 {
@@ -217,6 +217,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "api/#SolidStateDetectors.ElectricPotential-Union{Tuple{PotentialSimulationSetup{T,3,:Cylindrical}}, Tuple{T}} where T",
+    "page": "API",
+    "title": "SolidStateDetectors.ElectricPotential",
+    "category": "method",
+    "text": "ElectricPotential(setup::PotentialSimulationSetup{T, 3, :Cylindrical} ; kwargs...)::ElectricPotential{T, 3, :Cylindrical}\n\nExtracts the electric potential from setup and extrapolate it to an 2π grid.\n\nFor 2D grids (r and z) the user has to set the keyword n_points_in_θ::Int, e.g.: n_points_in_θ = 36.\n\n\n\n\n\n"
+},
+
+{
     "location": "api/#SolidStateDetectors.ElectricPotential-Union{Tuple{SolidStateDetector{T}}, Tuple{T}} where T",
     "page": "API",
     "title": "SolidStateDetectors.ElectricPotential",
@@ -230,6 +238,22 @@ var documenterSearchIndex = {"docs": [
     "title": "SolidStateDetectors.Grid",
     "category": "type",
     "text": "T: tick type\nN: N dimensional\nS: System (Cartesian, Cylindrical...)\n\n\n\n\n\n"
+},
+
+{
+    "location": "api/#SolidStateDetectors.PointTypes",
+    "page": "API",
+    "title": "SolidStateDetectors.PointTypes",
+    "category": "type",
+    "text": "PointTypes{T, N, S} <: AbstractArray{T, N}\n\nPointTypes stores the point type of each grid point.\n\n\n\n\n\n"
+},
+
+{
+    "location": "api/#SolidStateDetectors.SolidStateDetector",
+    "page": "API",
+    "title": "SolidStateDetectors.SolidStateDetector",
+    "category": "type",
+    "text": "abstract type SolidStateDetector{T}\n\nSupertype of all detector structs.\n\n\n\n\n\n"
 },
 
 {
@@ -318,6 +342,14 @@ var documenterSearchIndex = {"docs": [
     "title": "SolidStateDetectors.PointType",
     "category": "type",
     "text": "const PointType = UInt8\n\nStores certain information about a grid point via bit-flags. \n\nRight now there are:\n\n`const update_bit      = 0x01`\n`const undepleted_bit  = 0x02`\n`const pn_junction_bit = 0x04`\n\nHow to get information out of a PointType variable pt:\n\npt & update_bit == 0 -> do not update this point (for fixed points)     \npt & update_bit >  0 -> do update this point    \npt & undepleted_bit > 0 -> this point is undepleted\npt & pn_junction_bit > 0 -> this point belongs to the solid state detector. So it is in the volume of the n-type or p-type material.\n\n\n\n\n\n"
+},
+
+{
+    "location": "api/#SolidStateDetectors.PotentialSimulationSetup",
+    "page": "API",
+    "title": "SolidStateDetectors.PotentialSimulationSetup",
+    "category": "type",
+    "text": "PotentialSimulationSetup{T, N, S} <: AbstractPotentialSimulationSetup{T, N}\n\nCollection struct. It holds the grid, the potential, the point types, the charge density and the dielectric distribution.\n\n\n\n\n\n"
 },
 
 {
