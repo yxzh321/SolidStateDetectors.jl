@@ -162,7 +162,8 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 			Npart += 1
 		end
 	end
-	=# Npart should be changed. But there will be some problems about the index
+	=# 
+	#Npart should be changed. But there will be some problems about the index
 	Npart = length(charges)
 	softening = 5*1.0 / sqrt(Npart)
 	part = Vector{Data{3,T}}(undef,Npart)
