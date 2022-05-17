@@ -126,7 +126,7 @@ function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, d
     nothing 
 end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat, N2Alg}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
         if done[n] continue end
@@ -152,7 +152,7 @@ const boxsizes = @SVector(ones(3)) * Inf
 
 
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{OctreeAlg})::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{OctreeAlg})::Nothing where {T <: SSDFloat, OctreeAlg}
     #TO DO: apply OctreeAlg
 	#ignore collected charges.
 	#=
@@ -329,7 +329,7 @@ function _drift_charge!(
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, done, electric_field, det, S)
         diffusion && _add_fieldvector_diffusion!(step_vectors, done, diffusion_length)
-        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r)
+        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r, OctreeAlg)
         _get_driftvectors!(step_vectors, done, Δt, det.semiconductor.charge_drift_model, CC)
         _modulate_driftvectors!(step_vectors, current_pos, det.virtual_drift_volumes)
         _check_and_update_position!(step_vectors, current_pos, done, normal, drift_path, timestamps, istep, det, grid, point_types, startpos, Δt, verbose)
