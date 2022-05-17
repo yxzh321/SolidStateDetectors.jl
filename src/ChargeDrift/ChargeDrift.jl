@@ -14,6 +14,9 @@ abstract type ChargeCarrier end
 abstract type Electron <: ChargeCarrier end 
 abstract type Hole <: ChargeCarrier end
 
+abstract type N2Alg end
+abstract type OctreeAlg end
+
 function _common_time(dp::EHDriftPath{T, TT})::TT where {T <: SSDFloat, TT<:RealQuantity}
     max(last(dp.timestamps_e), last(dp.timestamps_h))
 end
@@ -123,7 +126,7 @@ function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, d
     nothing 
 end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T)::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
         if done[n] continue end
@@ -141,6 +144,49 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
         end
     end
     nothing
+end
+
+const hsml0 = 0.2
+const ANGLE = 0.6
+const boxsizes = @SVector(ones(3)) * Inf
+
+
+
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{OctreeAlg})::Nothing where {T <: SSDFloat}
+    #TO DO: apply OctreeAlg
+	#ignore collected charges.
+	#=
+	Npart = 0
+	@inbounds for i in eachindex(charges)
+		if !done[i]
+			Npart += 1
+		end
+	end
+	=# Npart should be changed. But there will be some problems about the index
+	Npart = length(charges)
+	softening = 5*1.0 / sqrt(Npart)
+	part = Vector{Data{3,T}}(undef,Npart)
+	@inbounds for i in eachindex(charges)
+		if done[i]
+			part[i] = Data{3,T}(zero(CartesianVector{T}),i,hsml0,0)
+		else
+			part[i] = Data{3,T}(current_pos[i],i,hsml0,charges[i])
+		end
+	end
+	Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
+	Xmax = @SVector [maximum(getindex.(current_pos,i)) for i in 1:3]
+			
+	topnode_length = (Xmax - Xmin) * 1.01
+	center = 0.5 * (Xmax + Xmin)
+	tree = buildtree(part, center, topnode_length);
+	acc = Vector{SVector{3,T}}(undef,Npart)
+	@threads for i in eachindex(charges)
+		if done[i] continue end
+		ga = GravTreeGather{3,T}(step_vectors[i],0,0)
+		gravity_treewalk!(ga,current_pos[i],tree,ANGLE,softening,boxsizes)
+		step_vectors[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
+	end
+	nothing
 end
 
 function _modulate_driftvectors!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, vdv::Vector{V})::Nothing where {T <: SSDFloat, V <: AbstractVirtualVolume{T}}
