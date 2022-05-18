@@ -155,6 +155,7 @@ const boxsizes = @SVector(ones(3)) * Inf
 function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{OctreeAlg})::Nothing where {T <: SSDFloat, OctreeAlg}
     #TO DO: apply OctreeAlg
 	#ignore collected charges.
+	@info "Use OctreeAlg"
 	#=
 	Npart = 0
 	@inbounds for i in eachindex(charges)
