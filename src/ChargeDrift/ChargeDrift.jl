@@ -156,23 +156,20 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     #TO DO: apply OctreeAlg
 	#ignore collected charges.
 	@info "Use OctreeAlg"
-	#=
 	Npart = 0
 	@inbounds for i in eachindex(charges)
 		if !done[i]
 			Npart += 1
 		end
-	end
-	=# 
-	#Npart should be changed. But there will be some problems about the index
-	Npart = length(charges)
+	end 
+	#Npart should be changed.
+	#Npart = length(charges)
 	softening = 5*1.0 / sqrt(Npart)
 	part = Vector{Data{3,T}}(undef,Npart)
-	@inbounds for i in eachindex(charges)
-		if done[i]
-			part[i] = Data{3,T}(zero(CartesianVector{T}),i,hsml0,0)
-		else
-			part[i] = Data{3,T}(current_pos[i],i,hsml0,charges[i])
+	@inbounds for i in 1:Npart
+		@inbounds for j in eachindex(charges)
+			if done[j] continue end
+			part[i] = Data{3,T}(current_pos[j],i,hsml0,charges[j])
 		end
 	end
 	Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
