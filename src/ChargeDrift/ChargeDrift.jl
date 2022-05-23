@@ -179,7 +179,7 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 	center = 0.5 * (Xmax + Xmin)
 	tree = buildtree(part, center, topnode_length);
 	acc = Vector{SVector{3,T}}(undef,Npart)
-	@threads for i in eachindex(charges)
+	Threads.@threads for i in eachindex(charges)
 		if done[i] continue end
 		ga = GravTreeGather{3,T}(step_vectors[i],0,0)
 		gravity_treewalk!(ga,current_pos[i],tree,ANGLE,softening,boxsizes)
