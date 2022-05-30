@@ -14,8 +14,15 @@ abstract type ChargeCarrier end
 abstract type Electron <: ChargeCarrier end 
 abstract type Hole <: ChargeCarrier end
 
-abstract type N2Alg end
-abstract type OctreeAlg end
+abstract type SelfRepulsionAlg end
+abstract type N2Alg <: SelfRepulsionAlg end
+#abstract type OctreeAlg end
+struct OctreeAlg <: SelfRepulsionAlg
+	const hsml0::Float64
+	const ANGLE::Float64
+end
+
+OctreeAlg() = OctreeAlg(0.2,0.6)
 
 function _common_time(dp::EHDriftPath{T, TT})::TT where {T <: SSDFloat, TT<:RealQuantity}
     max(last(dp.timestamps_e), last(dp.timestamps_h))
@@ -126,7 +133,7 @@ function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, d
     nothing 
 end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat, N2Alg}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
         if done[n] continue end
@@ -146,16 +153,11 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     nothing
 end
 
-const hsml0 = 0.2
-const ANGLE = 0.6
-const boxsizes = @SVector(ones(3)) * Inf
-
-
-
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{OctreeAlg})::Nothing where {T <: SSDFloat, OctreeAlg}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::OctreeAlg)::Nothing where {T <: SSDFloat}
     #TO DO: apply OctreeAlg
 	#ignore collected charges.
 	@info "Use OctreeAlg"
+	const boxsizes = @SVector(ones(3)) * Inf
 	Npart = 0
 	@inbounds for i in eachindex(charges)
 		if !done[i]
@@ -178,13 +180,15 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 	topnode_length = (Xmax - Xmin) * 1.01
 	center = 0.5 * (Xmax + Xmin)
 	tree = buildtree(part, center, topnode_length);
-	acc = Vector{SVector{3,T}}(undef,Npart)
+	#acc = Vector{SVector{3,T}}(undef,length(charges))#length should be length(charges)
+	acc = zeros(SVector{3,T},length(charges))
 	Threads.@threads for i in eachindex(charges)
 		if done[i] continue end
-		ga = GravTreeGather{3,T}(step_vectors[i],0,0)
+		ga = GravTreeGather{3,T}()
 		gravity_treewalk!(ga,current_pos[i],tree,ANGLE,softening,boxsizes)
-		step_vectors[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
+		acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
 	end
+	step_vectors .+= acc
 	nothing
 end
 
@@ -328,7 +332,7 @@ function _drift_charge!(
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, done, electric_field, det, S)
         diffusion && _add_fieldvector_diffusion!(step_vectors, done, diffusion_length)
-        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r, OctreeAlg)
+        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r, OctreeAlg())
         _get_driftvectors!(step_vectors, done, Δt, det.semiconductor.charge_drift_model, CC)
         _modulate_driftvectors!(step_vectors, current_pos, det.virtual_drift_volumes)
         _check_and_update_position!(step_vectors, current_pos, done, normal, drift_path, timestamps, istep, det, grid, point_types, startpos, Δt, verbose)
