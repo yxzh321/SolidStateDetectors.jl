@@ -18,8 +18,8 @@ abstract type SelfRepulsionAlg end
 abstract type N2Alg <: SelfRepulsionAlg end
 #abstract type OctreeAlg end
 struct OctreeAlg <: SelfRepulsionAlg
-	const hsml0::Float64
-	const ANGLE::Float64
+	hsml0::Float64
+	ANGLE::Float64
 end
 
 OctreeAlg() = OctreeAlg(0.2,0.6)
