@@ -153,12 +153,14 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     nothing
 end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::OctreeAlg)::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, OctreeAlg::OctreeAlg)::Nothing where {T <: SSDFloat}
     #TO DO: apply OctreeAlg
 	#ignore collected charges.
 	@info "Use OctreeAlg"
 	const boxsizes = @SVector(ones(3)) * Inf
 	Npart = 0
+	const hsml0 = OctreeAlg.hsml0
+	const ANGLE = OctreeAlg.ANGLE
 	@inbounds for i in eachindex(charges)
 		if !done[i]
 			Npart += 1
