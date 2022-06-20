@@ -169,11 +169,15 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 	#Npart should be changed.
 	#Npart = length(charges)
 	softening = 5*1.0 / sqrt(Npart)
-	part = Vector{Data{3,T}}(undef,Npart)
-	@inbounds for i in 1:Npart
+	#part = Vector{Data{3,T}}(nothing,length(charges))
+    #part = zeros(Data{3,T},length(charges))
+    part = [Data{3,T}(zero(SVector{3,T}), i, 0, 0) for i in eachindex(charges)]
+    i = 1
+	while i <= Npart
 		@inbounds for j in eachindex(charges)
 			if done[j] continue end
 			part[i] = Data{3,T}(current_pos[j],i,hsml0,charges[j])
+            i += 1
 		end
 	end
 	Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
@@ -188,7 +192,8 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     for i in eachindex(charges)
 		if done[i] continue end
 		ga = GravTreeGather{3,T}()
-		gravity_treewalk!(ga,current_pos[i],tree,ANGLE,softening,boxsizes)
+        X = @SVector [getindex(current_pos[i],j) for j in 1:3]
+		gravity_treewalk!(ga,X,tree,ANGLE,softening,boxsizes)
 		acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
 	end
 	step_vectors .+= acc
