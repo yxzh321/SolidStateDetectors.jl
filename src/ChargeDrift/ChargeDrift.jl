@@ -46,7 +46,7 @@ end
 function _drift_charges(det::SolidStateDetector{T}, grid::Grid{T, 3}, point_types::PointTypes{T, 3},
                         starting_points::VectorOfArrays{CartesianPoint{T}}, energies::VectorOfArrays{T},
                         electric_field::Interpolations.Extrapolation{<:SVector{3}, 3},
-                        Δt::RQ; max_nsteps::Int = 2000, diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
+                        Δt::RQ; max_nsteps::Int = 2000, diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true, self_repulsion_alg::SelfRepulsionAlg = SolidStateDetectors.N2Alg)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
 
     drift_paths::Vector{EHDriftPath{T}} = Vector{EHDriftPath{T}}(undef, length(flatview(starting_points)))
     dt::T = T(to_internal_units(Δt))
@@ -63,8 +63,8 @@ function _drift_charges(det::SolidStateDetector{T}, grid::Grid{T, 3}, point_type
         timestamps_e::Vector{T} = Vector{T}(undef, max_nsteps)
         timestamps_h::Vector{T} = Vector{T}(undef, max_nsteps)
         
-        n_e::Int = _drift_charge!( drift_path_e, timestamps_e, det, point_types, grid, start_points, -charges, dt, electric_field, Electron, diffusion = diffusion, self_repulsion = self_repulsion, verbose = verbose )
-        n_h::Int = _drift_charge!( drift_path_h, timestamps_h, det, point_types, grid, start_points,  charges, dt, electric_field, Hole, diffusion = diffusion, self_repulsion = self_repulsion, verbose = verbose )
+        n_e::Int = _drift_charge!( drift_path_e, timestamps_e, det, point_types, grid, start_points, -charges, dt, electric_field, Electron, diffusion = diffusion, self_repulsion = self_repulsion, verbose = verbose, self_repulsion_alg = self_repulsion_alg )
+        n_h::Int = _drift_charge!( drift_path_h, timestamps_h, det, point_types, grid, start_points,  charges, dt, electric_field, Hole, diffusion = diffusion, self_repulsion = self_repulsion, verbose = verbose, self_repulsion_alg = self_repulsion_alg )
     
         for i in eachindex(start_points)
             drift_paths[drift_path_counter + i] = EHDriftPath{T, T}( drift_path_e[i,1:n_e], drift_path_h[i,1:n_h], timestamps_e[1:n_e], timestamps_h[1:n_h] )
@@ -184,7 +184,8 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
 	tree = buildtree(part, center, topnode_length);
 	#acc = Vector{SVector{3,T}}(undef,length(charges))#length should be length(charges)
 	acc = zeros(SVector{3,T},length(charges))
-	Threads.@threads for i in eachindex(charges)
+	#Threads.@threads for i in eachindex(charges)
+    for i in eachindex(charges)
 		if done[i] continue end
 		ga = GravTreeGather{3,T}()
 		gravity_treewalk!(ga,current_pos[i],tree,ANGLE,softening,boxsizes)
@@ -303,7 +304,8 @@ function _drift_charge!(
                             ::Type{CC};
                             diffusion::Bool = false,
                             self_repulsion::Bool = false,
-                            verbose::Bool = true
+                            verbose::Bool = true,
+                            self_repulsion_alg::SelfRepulsionAlg = SolidStateDetectors.N2Alg
                         )::Int where {T <: SSDFloat, S, CC <: ChargeCarrier}
                         
     n_hits::Int, max_nsteps::Int = size(drift_path)
@@ -334,7 +336,7 @@ function _drift_charge!(
         _set_to_zero_vector!(step_vectors)
         _add_fieldvector_drift!(step_vectors, current_pos, done, electric_field, det, S)
         diffusion && _add_fieldvector_diffusion!(step_vectors, done, diffusion_length)
-        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r, OctreeAlg())
+        self_repulsion && _add_fieldvector_selfrepulsion!(step_vectors, current_pos, done, charges, ϵ_r, self_repulsion_alg)
         _get_driftvectors!(step_vectors, done, Δt, det.semiconductor.charge_drift_model, CC)
         _modulate_driftvectors!(step_vectors, current_pos, det.virtual_drift_volumes)
         _check_and_update_position!(step_vectors, current_pos, done, normal, drift_path, timestamps, istep, det, grid, point_types, startpos, Δt, verbose)
