@@ -15,14 +15,14 @@ abstract type Electron <: ChargeCarrier end
 abstract type Hole <: ChargeCarrier end
 
 abstract type SelfRepulsionAlg end
-abstract type N2Alg <: SelfRepulsionAlg end
+struct N2Alg <: SelfRepulsionAlg end
 #abstract type OctreeAlg end
 struct OctreeAlg <: SelfRepulsionAlg
 	hsml0::Float64
 	ANGLE::Float64
 end
 
-OctreeAlg() = OctreeAlg(0.2,0.6)
+OctreeAlg() = OctreeAlg(0,0.2)
 
 function _common_time(dp::EHDriftPath{T, TT})::TT where {T <: SSDFloat, TT<:RealQuantity}
     max(last(dp.timestamps_e), last(dp.timestamps_h))
@@ -133,7 +133,7 @@ function _add_fieldvector_diffusion!(step_vectors::Vector{CartesianVector{T}}, d
     nothing 
 end
 
-function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::Type{N2Alg})::Nothing where {T <: SSDFloat}
+function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, ::N2Alg)::Nothing where {T <: SSDFloat}
     #TO DO: ignore charges that are already collected (not trapped though!)
     for n in eachindex(step_vectors)
         if done[n] continue end
@@ -155,49 +155,53 @@ end
 
 function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, done::Vector{Bool}, charges::Vector{T}, ϵ_r::T, octree_alg::OctreeAlg)::Nothing where {T <: SSDFloat}
     #TO DO: apply OctreeAlg
-	#ignore collected charges.
-	@info "Use OctreeAlg"
-	boxsizes = @SVector(ones(3)) * Inf
-	Npart = 0
-	hsml0 = octree_alg.hsml0
-	ANGLE = octree_alg.ANGLE
-	@inbounds for i in eachindex(charges)
-		if !done[i]
-			Npart += 1
-		end
-	end 
-	#Npart should be changed.
-	#Npart = length(charges)
-	softening = 5*1.0 / sqrt(Npart)
-	#part = Vector{Data{3,T}}(nothing,length(charges))
+    #ignore collected charges.
+    #@info "Use OctreeAlg"
+    boxsizes = @SVector(ones(3)) * Inf
+    Npart = length(current_pos)
+    hsml0 = octree_alg.hsml0
+    ANGLE = octree_alg.ANGLE
+    @inbounds for i in eachindex(charges)
+        if !done[i]
+            Npart += 1
+        end
+    end 
+    #Npart should be changed.
+    #Npart = length(charges)
+    
+    #part = Vector{Data{3,T}}(nothing,length(charges))
     #part = zeros(Data{3,T},length(charges))
-    part = [Data{3,T}(zero(SVector{3,T}), i, 0, 0) for i in eachindex(charges)]
-    i = 1
-	while i <= Npart
-		@inbounds for j in eachindex(charges)
-			if done[j] continue end
-			part[i] = Data{3,T}(current_pos[j],i,hsml0,charges[j])
-            i += 1
-		end
-	end
-	Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
-	Xmax = @SVector [maximum(getindex.(current_pos,i)) for i in 1:3]
-			
-	topnode_length = (Xmax - Xmin) * 1.01
-	center = 0.5 * (Xmax + Xmin)
-	tree = buildtree(part, center, topnode_length);
-	#acc = Vector{SVector{3,T}}(undef,length(charges))#length should be length(charges)
-	acc = zeros(SVector{3,T},length(charges))
-	#Threads.@threads for i in eachindex(charges)
+    #part = [Data{3,T}(zero(SVector{3,T}), 0, 0, 0) for i in eachindex(charges)]
+    X = SVector{3,T}.(current_pos)
+    #ranX = @SVector [(rand(MersenneTwister(i),T,3)) for i in eachindex(X)]
+    #part = [Data{3,T}(SVector{3}{ranX[i]}, i, hsml0, abs(charges[i])) for i in eachindex(X)]
+    #part = [Data{3,T}(SVector{3}(rand(T,3)), i, hsml0, 0) for i in eachindex(X)]
+    part = [Data{3,T}(X[i], i, hsml0, 0) for i in eachindex(X)] #initialize charges with zeros
+    #@inbounds for j in eachindex(charges)
+    for j in eachindex(charges)
+        if done[j] continue end
+        #part[j] = Data{3,T}(SVector{3,T}(current_pos[j]),i,hsml0,charges[j])
+        part[j] = Data{3,T}(X[j],j,hsml0,abs(charges[j]))
+    end
+    Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
+    Xmax = @SVector [maximum(getindex.(current_pos,i)) for i in 1:3]
+    
+    topnode_length = (Xmax - Xmin) * 1.01
+    softening = 5*mean(topnode_length) / 100 /sqrt(Npart)
+    center = 0.5 * (Xmax + Xmin)
+    tree = buildtree(part, center, topnode_length);
+    #acc = Vector{SVector{3,T}}(undef,length(charges))#length should be length(charges)
+    acc = zeros(SVector{3,T},length(charges))
+    #Threads.@threads for i in eachindex(charges)
     for i in eachindex(charges)
-		if done[i] continue end
-		ga = GravTreeGather{3,T}()
-        X = @SVector [getindex(current_pos[i],j) for j in 1:3]
-		gravity_treewalk!(ga,X,tree,ANGLE,softening,boxsizes)
-		acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
-	end
-	step_vectors .+= acc
-	nothing
+        if done[i] continue end
+        ga = GravTreeGather{3,T}()
+        #X = @SVector [getindex(current_pos[i],j) for j in 1:3]
+        gravity_treewalk!(ga,X[i],tree,ANGLE,softening,boxsizes)
+        acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
+    end
+    step_vectors .+= -sign.(charges).*acc
+    nothing
 end
 
 function _modulate_driftvectors!(step_vectors::Vector{CartesianVector{T}}, current_pos::Vector{CartesianPoint{T}}, vdv::Vector{V})::Nothing where {T <: SSDFloat, V <: AbstractVirtualVolume{T}}

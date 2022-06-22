@@ -229,7 +229,7 @@ simulate!(evt, sim, Δt = 1u"ns", verbose = false)
 
 See also [`drift_charges!`](@ref) and [`get_signals!`](@ref).
 """
-function simulate!(evt::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true, self_repulsion_alg::SelfRepulsionAlg = SolidStateDetectors.N2Alg)::Nothing where {T <: SSDFloat}
+function simulate!(evt::Event{T}, sim::Simulation{T}; max_nsteps::Int = 1000, Δt::RealQuantity = 5u"ns", diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true, self_repulsion_alg::SelfRepulsionAlg = N2Alg())::Nothing where {T <: SSDFloat}
     drift_charges!(evt, sim, max_nsteps = max_nsteps, Δt = Δt, diffusion = diffusion, self_repulsion = self_repulsion, verbose = verbose, self_repulsion_alg = self_repulsion_alg)
     get_signals!(evt, sim, Δt = Δt)
     nothing
