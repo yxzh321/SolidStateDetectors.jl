@@ -46,7 +46,7 @@ end
 function _drift_charges(det::SolidStateDetector{T}, grid::Grid{T, 3}, point_types::PointTypes{T, 3},
                         starting_points::VectorOfArrays{CartesianPoint{T}}, energies::VectorOfArrays{T},
                         electric_field::Interpolations.Extrapolation{<:SVector{3}, 3},
-                        Δt::RQ; max_nsteps::Int = 2000, diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true, self_repulsion_alg::SelfRepulsionAlg = SolidStateDetectors.N2Alg)::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
+                        Δt::RQ; max_nsteps::Int = 2000, diffusion::Bool = false, self_repulsion::Bool = false, verbose::Bool = true, self_repulsion_alg::SelfRepulsionAlg = N2Alg())::Vector{EHDriftPath{T}} where {T <: SSDFloat, RQ <: RealQuantity}
 
     drift_paths::Vector{EHDriftPath{T}} = Vector{EHDriftPath{T}}(undef, length(flatview(starting_points)))
     dt::T = T(to_internal_units(Δt))
@@ -158,39 +158,29 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     #ignore collected charges.
     #@info "Use OctreeAlg"
     boxsizes = @SVector(ones(3)) * Inf
-    Npart = length(current_pos)
-    hsml0 = octree_alg.hsml0
-    ANGLE = octree_alg.ANGLE
+    #Npart = length(current_pos) #Npart should be changed.
+    Npart = 0
+    hsml0 = octree_alg.hsml0 #hsml0 is not actually used in OctreeBH.jl, so just ignore it for now
+    ANGLE = octree_alg.ANGLE #0.2 is fine for now
     @inbounds for i in eachindex(charges)
         if !done[i]
             Npart += 1
         end
-    end 
-    #Npart should be changed.
-    #Npart = length(charges)
-    
-    #part = Vector{Data{3,T}}(nothing,length(charges))
-    #part = zeros(Data{3,T},length(charges))
-    #part = [Data{3,T}(zero(SVector{3,T}), 0, 0, 0) for i in eachindex(charges)]
+    end  
     X = SVector{3,T}.(current_pos)
-    #ranX = @SVector [(rand(MersenneTwister(i),T,3)) for i in eachindex(X)]
-    #part = [Data{3,T}(SVector{3}{ranX[i]}, i, hsml0, abs(charges[i])) for i in eachindex(X)]
-    #part = [Data{3,T}(SVector{3}(rand(T,3)), i, hsml0, 0) for i in eachindex(X)]
     part = [Data{3,T}(X[i], i, hsml0, 0) for i in eachindex(X)] #initialize charges with zeros
-    #@inbounds for j in eachindex(charges)
-    for j in eachindex(charges)
+    @inbounds for j in eachindex(charges)
         if done[j] continue end
-        #part[j] = Data{3,T}(SVector{3,T}(current_pos[j]),i,hsml0,charges[j])
         part[j] = Data{3,T}(X[j],j,hsml0,abs(charges[j]))
     end
     Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
     Xmax = @SVector [maximum(getindex.(current_pos,i)) for i in 1:3]
     
     topnode_length = (Xmax - Xmin) * 1.01
-    softening = 5*mean(topnode_length) / 100 /sqrt(Npart)
+    # `softening` is to avoid singular points while calculating forces, so it should be fine to set it as `minimum distance` 10µm
+    softening = 1e-5 #5*mean(topnode_length) / 100 /sqrt(Npart)
     center = 0.5 * (Xmax + Xmin)
     tree = buildtree(part, center, topnode_length);
-    #acc = Vector{SVector{3,T}}(undef,length(charges))#length should be length(charges)
     acc = zeros(SVector{3,T},length(charges))
     #Threads.@threads for i in eachindex(charges)
     for i in eachindex(charges)
@@ -199,6 +189,7 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
         #X = @SVector [getindex(current_pos[i],j) for j in 1:3]
         gravity_treewalk!(ga,X[i],tree,ANGLE,softening,boxsizes)
         acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
+        #println(Threads.threadid())
     end
     step_vectors .+= -sign.(charges).*acc
     nothing
@@ -314,7 +305,7 @@ function _drift_charge!(
                             diffusion::Bool = false,
                             self_repulsion::Bool = false,
                             verbose::Bool = true,
-                            self_repulsion_alg::SelfRepulsionAlg = SolidStateDetectors.N2Alg
+                            self_repulsion_alg::SelfRepulsionAlg = N2Alg()
                         )::Int where {T <: SSDFloat, S, CC <: ChargeCarrier}
                         
     n_hits::Int, max_nsteps::Int = size(drift_path)
