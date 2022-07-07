@@ -158,20 +158,21 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     #ignore collected charges.
     #@info "Use OctreeAlg"
     boxsizes = @SVector(ones(3)) * Inf
-    #Npart = length(current_pos) #Npart should be changed.
-    Npart = 0
+    Npart = 0 #Npart should be changed.
     hsml0 = octree_alg.hsml0 #hsml0 is not actually used in OctreeBH.jl, so just ignore it for now
     ANGLE = octree_alg.ANGLE #0.2 is fine for now
+    idx = Vector{Int}()
     @inbounds for i in eachindex(charges)
         if !done[i]
             Npart += 1
+            push!(idx,i)
         end
     end  
     X = SVector{3,T}.(current_pos)
-    part = [Data{3,T}(X[i], i, hsml0, 0) for i in eachindex(X)] #initialize charges with zeros
-    @inbounds for j in eachindex(charges)
-        if done[j] continue end
-        part[j] = Data{3,T}(X[j],j,hsml0,abs(charges[j]))
+    part = [Data{3,T}(zero(SVector{3,T}), 0, hsml0, 0) for i in 1:Npart] #size of the tree changes with Npart(ignore collected charges)
+    @inbounds for i in 1:Npart
+        myidx = idx[i]
+        part[i] = Data{3,T}(X[myidx],i,hsml0,abs(charges[myidx]))
     end
     Xmin = @SVector [minimum(getindex.(current_pos,i)) for i in 1:3]
     Xmax = @SVector [maximum(getindex.(current_pos,i)) for i in 1:3]
@@ -182,14 +183,11 @@ function _add_fieldvector_selfrepulsion!(step_vectors::Vector{CartesianVector{T}
     center = 0.5 * (Xmax + Xmin)
     tree = buildtree(part, center, topnode_length);
     acc = zeros(SVector{3,T},length(charges))
-    #Threads.@threads for i in eachindex(charges)
-    for i in eachindex(charges)
-        if done[i] continue end
+    @inbounds for i in 1:Npart
+        myidx = idx[i]
         ga = GravTreeGather{3,T}()
-        #X = @SVector [getindex(current_pos[i],j) for j in 1:3]
-        gravity_treewalk!(ga,X[i],tree,ANGLE,softening,boxsizes)
-        acc[i] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
-        #println(Threads.threadid())
+        gravity_treewalk!(ga,X[myidx],tree,ANGLE,softening,boxsizes)
+        acc[myidx] = elementary_charge * (4 * pi * ϵ0 * ϵ_r)^(-1) .* ga.acc
     end
     step_vectors .+= -sign.(charges).*acc
     nothing
