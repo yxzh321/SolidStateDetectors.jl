@@ -160,6 +160,7 @@ function get_electric_field_from_potential(epot::ElectricPotential{T, 3, Cylindr
     if fieldvector_coordinates == :xyz
         ef = convert_field_vectors_to_xyz(ef, axφ)
     end
+    @info "using new version"
     return ElectricField(ef, point_types.grid)
 end
 
