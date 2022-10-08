@@ -91,7 +91,7 @@ function PotentialCalculationSetup(det::SolidStateDetector{T}, grid::Cylindrical
                 not_only_paint_contacts::Bool = true, paint_contacts::Bool = true)::PotentialCalculationSetup{T} where {T}
     r0_handling::Bool = typeof(grid.axes[1]).parameters[2] == :r0
     only_2d::Bool = length(grid.axes[2]) == 1 ? true : false
-    @assert grid.axes[1][1] == 0 "Something is wrong. R-axis has `:r0`-boundary handling but first tick is $(axr[1]) and not 0."
+    @assert grid.axes[1][1] == 0 "Something is wrong. R-axis has `:r0`-boundary handling but first tick is $(collect(grid.axes[1])[1]) and not 0."
 
     is_weighting_potential::Bool = !ismissing(weighting_potential_contact_id)
     depletion_handling::Bool = is_weighting_potential && !ismissing(point_types)
