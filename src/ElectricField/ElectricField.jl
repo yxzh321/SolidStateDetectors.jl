@@ -79,7 +79,7 @@ function get_electric_field_from_potential(epot::ElectricPotential{T, 3, Cylindr
                     Δp_r_2 = p[ir ,iφ, iz]-p[ir-1 ,iφ, iz]
                     d_r_1 = axr[ir+1]-axr[ir]
                     d_r_2 = axr[ir]-axr[ir-1]
-                    er = ( Δp_r_1/d_r_1 + Δp_r_2/d_r_2) / 2 #( Δp_r_1/d_r_1*d_r_2 + Δp_r_2/d_r_2*d_r_1) / (d_r_1 + d_r_2)
+                    er = ( Δp_r_1/d_r_1*d_r_2 + Δp_r_2/d_r_2*d_r_1) / (d_r_1 + d_r_2) #( Δp_r_1/d_r_1 + Δp_r_2/d_r_2) / 2
                 end
                 ### φ ###
                 if iφ < 2
@@ -87,19 +87,19 @@ function get_electric_field_from_potential(epot::ElectricPotential{T, 3, Cylindr
                     Δp_φ_2 = p[ir ,iφ, iz]-p[ir ,end, iz]
                     d_φ_1 = (axφ[iφ+1]-axφ[iφ]) * axr[ir]# to get the proper value in length units
                     d_φ_2 = (cyclic + axφ[iφ] - axφ[end]) * axr[ir]
-                    eφ = ( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2 #( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2)
+                    eφ = ( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2) #( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2
                 elseif iφ == size(ef,2)
                     Δp_φ_1 = p[ir ,1, iz]-p[ir ,iφ, iz]
                     Δp_φ_2 = p[ir ,iφ, iz]-p[ir ,iφ-1, iz]
                     d_φ_1 = (axφ[1]-axφ[iφ]) * axr[ir]# to get the proper value in length units
                     d_φ_2 = (axφ[iφ]-axφ[iφ-1]) * axr[ir]
-                    eφ = ( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2 #( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2)
+                    eφ = ( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2) #( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2
                 else
                     Δp_φ_1 = p[ir ,iφ+1, iz]-p[ir ,iφ, iz]
                     Δp_φ_2 = p[ir ,iφ, iz]-p[ir ,iφ-1, iz]
                     d_φ_1 = (axφ[iφ+1]-axφ[iφ]) * axr[ir]# to get the proper value in length units
                     d_φ_2 = (axφ[iφ]-axφ[iφ-1]) * axr[ir]
-                    eφ = ( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2 #( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2)
+                    eφ = ( Δp_φ_1/d_φ_1*d_φ_2 + Δp_φ_2/d_φ_2*d_φ_1) / (d_φ_1 + d_φ_2) #( Δp_φ_1/d_φ_1 + Δp_φ_2/d_φ_2) / 2
                 end
                 isinf(eφ) || isnan(eφ) ? eφ = 0.0 : nothing # for small radii and small distances(center of the grid) it would yield Infs or Nans
                 if iz-1<1
@@ -115,7 +115,7 @@ function get_electric_field_from_potential(epot::ElectricPotential{T, 3, Cylindr
                     Δp_z_2 = p[ir ,iφ, iz]-p[ir ,iφ, iz-1]
                     d_z_1 = axz[iz+1]-axz[iz]
                     d_z_2 = axz[iz]-axz[iz-1]
-                    ez = ( Δp_z_1/d_z_1 + Δp_z_2/d_z_2) / 2 #( Δp_z_1/d_z_1*d_z_2 + Δp_z_2/d_z_2*d_z_1) / (d_z_1 + d_z_2)
+                    ez = ( Δp_z_1/d_z_1*d_z_2 + Δp_z_2/d_z_2*d_z_1) / (d_z_1 + d_z_2) #( Δp_z_1/d_z_1 + Δp_z_2/d_z_2) / 2
                 end
                 if point_types[ir, iφ, iz] & update_bit == 0 # boundary points
                     if (1 < ir < size(point_types, 1))
@@ -160,7 +160,7 @@ function get_electric_field_from_potential(epot::ElectricPotential{T, 3, Cylindr
     if fieldvector_coordinates == :xyz
         ef = convert_field_vectors_to_xyz(ef, axφ)
     end
-    @info "using old version" #"using new version"
+    @info "using new version 1" #"using old version"
     return ElectricField(ef, point_types.grid)
 end
 
